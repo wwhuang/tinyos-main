@@ -32,6 +32,8 @@ enum { // commands we're executing (all SPI Mode 0 or 3)
   AT45_C_COMPARE_BUFFER2 = 0x61,
   AT45_C_REQ_STATUS = 0xd7,
   AT45_C_ERASE_PAGE = 0x81,
+  AT45_C_DEEP_POWER_DOWN = 0xb9,
+  AT45_C_DEEP_POWER_RESUME = 0xab,
 };
 
 
