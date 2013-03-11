@@ -96,63 +96,56 @@ implementation
     uint8_t lphase;
     uint16_t crc = (uint16_t)data;
 
-    if (dataCount) // skip 0-byte ops
-      {
-	/* For a 3% speedup, we could use labels and goto *.
-	   But: very gcc-specific. Also, need to do
-	   asm ("ijmp" : : "z" (state))
-	   instead of goto *state
-	*/
+    if (dataCount) { // skip 0-byte ops
+    	/* For a 3% speedup, we could use labels and goto *.
+    	   But: very gcc-specific. Also, need to do
+    	   asm ("ijmp" : : "z" (state))
+    	   instead of goto *state
+    	*/
 
-	ptr = flashCmd;
-	lphase = P_SEND_CMD;
-	count = 4 + dontCare;
+    	ptr = flashCmd;
+    	lphase = P_SEND_CMD;
+    	count = 4 + dontCare;
 
-	call HplAt45dbByte.select();
-	for (;;)
-	  {
-	    if (lphase == P_READ_CRC)
-	      {
-		crc = crcByte(crc, in);
+    	call HplAt45dbByte.select();
+    	for (;;) {
+    	  if (lphase == P_READ_CRC) {
+    		  crc = crcByte(crc, in);
+    		  --count;
+    		    
+          if (!count)
+    		    break;
+    	  }
+        else if (lphase == P_SEND_CMD) {
+      		// Note: the dontCare bytes are read after the end of cmd...
+      		out = *ptr++;
+      		count--;
+      		if (!count) {
+      		  lphase = status;
+      		  ptr = data;
+      		  count = dataCount;
+      		}
+        }
+        else if (lphase == P_READ) {
+    		  *ptr++ = in;
+    		  --count;
+    		  if (!count)
+    		    break;
+        }
+    	  else if (lphase == P_WRITE) {
+    		  if (!count)
+    		    break;
 
-		--count;
-		if (!count)
-		  break;
-	      }
-	    else if (lphase == P_SEND_CMD)
-	      {
-		// Note: the dontCare bytes are read after the end of cmd...
-		out = *ptr++;
-		count--;
-		if (!count)
-		  {
-		    lphase = status;
-		    ptr = data;
-		    count = dataCount;
-		  }
-	      }
-	    else if (lphase == P_READ)
-	      {
-		*ptr++ = in;
-		--count;
-		if (!count)
-		  break;
-	      }
-	    else if (lphase == P_WRITE)
-	      {
-		if (!count)
-		  break;
-
-		out = *ptr++;
-		--count;
-	      }
-	    else /* P_COMMAND */
-	      break;
-	
-	    in = call FlashSpi.write(out);
-	  }
-	call HplAt45dbByte.deselect();
+    		  out = *ptr++;
+    		  --count;
+    	  }
+    	  else /* P_COMMAND */
+          break;
+    	  
+        in = call FlashSpi.write(out);
       }
+  	  call HplAt45dbByte.deselect(); 
+    }
 
     call Resource.release();
     complete(crc);
@@ -252,5 +245,9 @@ implementation
 			       at45page_t page, at45pageoffset_t offset,
 			       uint8_t *pdata, at45pageoffset_t count) {
     execCommand(P_WRITE, cmd, 0, page, offset, pdata, count);
+  }
+
+  command void HplAt45db.deepPowerDown() {
+
   }
 }
