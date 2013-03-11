@@ -151,15 +151,15 @@ implementation
   }
 
   event void Resource.granted() {
-    switch (status)
-      {
-      case P_WAIT_COMPARE: case P_WAIT_IDLE:
-	requestFlashStatus();
-	break;
+    switch (status) {
+      case P_WAIT_COMPARE: 
+      case P_WAIT_IDLE:
+        requestFlashStatus();
+        break;
       default:
-	doCommand();
-	break;
-      }
+        doCommand();
+        break;
+    }
   }
 
   void execCommand(uint8_t op, uint8_t reqCmd, uint8_t reqDontCare,
@@ -191,19 +191,17 @@ implementation
   }
 
   event void HplAt45dbByte.idle() {
-    if (status == P_WAIT_COMPARE)
-      {
-	bool cstatus = call HplAt45dbByte.getCompareStatus();
-	call HplAt45dbByte.deselect();
-	call Resource.release();
-	signal HplAt45db.waitCompareDone(cstatus);
-      }
-    else
-      {
-	call HplAt45dbByte.deselect();
-	call Resource.release();
-	signal HplAt45db.waitIdleDone();
-      }
+    if (status == P_WAIT_COMPARE) {
+    	bool cstatus = call HplAt45dbByte.getCompareStatus();
+    	call HplAt45dbByte.deselect();
+    	call Resource.release();
+    	signal HplAt45db.waitCompareDone(cstatus);
+    }
+    else {
+	    call HplAt45dbByte.deselect();
+	    call Resource.release();
+	    signal HplAt45db.waitIdleDone();
+    }
   }
 
   command void HplAt45db.fill(uint8_t cmd, at45page_t page) {
