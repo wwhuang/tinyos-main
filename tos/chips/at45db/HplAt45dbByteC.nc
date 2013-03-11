@@ -95,12 +95,12 @@ implementation
     uint8_t lphase;
     uint16_t crc = (uint16_t)data;
 
+    /* For a 3% speedup, we could use labels and goto *.
+       But: very gcc-specific. Also, need to do
+       asm ("ijmp" : : "z" (state))
+       instead of goto *state
+    */
     if (dataCount) { // skip 0-byte ops
-    	/* For a 3% speedup, we could use labels and goto *.
-    	   But: very gcc-specific. Also, need to do
-    	   asm ("ijmp" : : "z" (state))
-    	   instead of goto *state
-    	*/
 
     	ptr = flashCmd;
     	lphase = P_SEND_CMD;
