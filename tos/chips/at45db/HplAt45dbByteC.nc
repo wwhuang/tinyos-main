@@ -163,8 +163,8 @@ implementation
   }
 
   void execCommand(uint8_t op, uint8_t reqCmd, uint8_t reqDontCare,
-		   at45page_t reqPage, at45pageoffset_t reqOffset,
-		   uint8_t * COUNT_NOK(reqCount) reqData, at45pageoffset_t reqCount) {
+		at45page_t reqPage, at45pageoffset_t reqOffset,
+		uint8_t * COUNT_NOK(reqCount) reqData, at45pageoffset_t reqCount) {
     status = op;
 
     // page (2 bytes) and highest bit of offset
