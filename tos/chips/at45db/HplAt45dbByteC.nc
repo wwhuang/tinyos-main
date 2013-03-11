@@ -54,33 +54,32 @@ implementation
 
   void complete(uint16_t crc) {
     uint8_t s = status;
-
     status = P_IDLE;
-    switch (s)
-      {
+    
+    switch (s) {
       default: break;
       case P_READ_CRC:
-	signal HplAt45db.crcDone(crc);
-	break;
+    	  signal HplAt45db.crcDone(crc);
+    	  break;
       case P_FILL:
-	signal HplAt45db.fillDone();
-	break;
+    	  signal HplAt45db.fillDone();
+    	  break;
       case P_FLUSH:
-	signal HplAt45db.flushDone();
-	break;
+    	  signal HplAt45db.flushDone();
+    	  break;
       case P_COMPARE:
-	signal HplAt45db.compareDone();
-	break;
+    	  signal HplAt45db.compareDone();
+    	  break;
       case P_ERASE:
-	signal HplAt45db.eraseDone();
-	break;
+    	  signal HplAt45db.eraseDone();
+    	  break;
       case P_READ:
-	signal HplAt45db.readDone();
-	break;
+    	  signal HplAt45db.readDone();
+    	  break;
       case P_WRITE:
-	signal HplAt45db.writeDone();
-	break;
-      }
+    	  signal HplAt45db.writeDone();
+    	  break;
+    }
   }
 
   void requestFlashStatus() {
