@@ -44,7 +44,9 @@ implementation
     P_FILL,
     P_FLUSH,
     P_COMPARE,
-    P_ERASE
+    P_ERASE, 
+    P_POWER_DOWN, 
+    P_RESUME
   };
   uint8_t status = P_IDLE;
   uint8_t flashCmd[9];
@@ -79,6 +81,12 @@ implementation
       case P_WRITE:
     	  signal HplAt45db.writeDone();
     	  break;
+      case P_POWER_DOWN:
+        signal HplAt45db.powerDownDone();
+        break;
+      case P_POWER_RESUME:
+        signal HplAt45db.resumeDone();
+        break;
     }
   }
 
@@ -95,11 +103,6 @@ implementation
     uint8_t lphase;
     uint16_t crc = (uint16_t)data;
 
-    /* For a 3% speedup, we could use labels and goto *.
-       But: very gcc-specific. Also, need to do
-       asm ("ijmp" : : "z" (state))
-       instead of goto *state
-    */
     if (dataCount) { // skip 0-byte ops
 
     	ptr = flashCmd;
@@ -138,6 +141,12 @@ implementation
     		  out = *ptr++;
     		  --count;
     	  }
+        else if (lphase = P_POWER_DOWN) {
+          break; 
+        }
+        else if (lphase = P_POWER_RESUME) {
+          break;
+        }
     	  else /* P_COMMAND */
           break;
     	  
@@ -221,30 +230,46 @@ implementation
   }
 
   command void HplAt45db.read(uint8_t cmd,
-			      at45page_t page, at45pageoffset_t offset,
-			      uint8_t *pdata, at45pageoffset_t count) {
+			                        at45page_t page, 
+                              at45pageoffset_t offset,
+			                        uint8_t *pdata, 
+                              at45pageoffset_t count) {
+
     execCommand(P_READ, cmd, 5, page, offset, pdata, count);
   }
 
-  command void HplAt45db.readBuffer(uint8_t cmd, at45pageoffset_t offset,
-				    uint8_t *pdata, at45pageoffset_t count) {
+  command void HplAt45db.readBuffer(uint8_t cmd, 
+                                    at45pageoffset_t offset,
+				                            uint8_t *pdata, 
+                                    at45pageoffset_t count) {
+
     execCommand(P_READ, cmd, 2, 0, offset, pdata, count);
   }
 
   command void HplAt45db.crc(uint8_t cmd,
-			     at45page_t page, at45pageoffset_t offset,
-			     at45pageoffset_t count,
-			     uint16_t baseCrc) {
+			                       at45page_t page, 
+                             at45pageoffset_t offset,
+			                       at45pageoffset_t count,
+			                       uint16_t baseCrc) {
+    
     execCommand(P_READ_CRC, cmd, 2, page, offset, TCAST(uint8_t * COUNT(count), baseCrc), count);
   }
 
   command void HplAt45db.write(uint8_t cmd,
-			       at45page_t page, at45pageoffset_t offset,
-			       uint8_t *pdata, at45pageoffset_t count) {
+			                         at45page_t page, 
+                               at45pageoffset_t offset,
+			                         uint8_t *pdata, 
+                               at45pageoffset_t count) {
+
     execCommand(P_WRITE, cmd, 0, page, offset, pdata, count);
   }
 
   command void HplAt45db.deepPowerDown() {
+    execCommand(P_POWER_DOWN, AT45_C_DEEP_POWER_DOWN, 0, 0, 0, NULL, 1);
+  }
 
+  command void HplAt45db.resumeFromDeepPowerDown() {
+    execCommand(P_POWER_RESUME, AT45_C_DEEP_POWER_RESUME, 0, 0, 0, NULL, 1);
   }
 }
+ 
