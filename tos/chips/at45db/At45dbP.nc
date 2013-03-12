@@ -54,28 +54,29 @@ module At45dbP @safe() {
   provides {
     interface Init;
     interface At45db;
+    interface SplitControl;
   }
   uses {
     interface HplAt45db;
     interface BusyWait<TMicro, uint16_t>;
   }
 }
-implementation
-{
-#define CHECKARGS
 
-#if 0
-  uint8_t work[20];
-  uint8_t woffset;
+implementation {
+  #define CHECKARGS
 
-  void wdbg(uint8_t x) {
-    work[woffset++] = x;
-    if (woffset == sizeof work)
-      woffset = 0;
-  }
-#else
-#define wdbg(n)
-#endif
+  #if 0
+    uint8_t work[20];
+    uint8_t woffset;
+
+    void wdbg(uint8_t x) {
+      work[woffset++] = x;
+      if (woffset == sizeof work)
+        woffset = 0;
+    }
+  #else
+  #define wdbg(n)
+  #endif
 
   enum { // requests
     IDLE,
@@ -118,8 +119,8 @@ implementation
   bool flashBusy;
 
   // Select a command for the current buffer
-#define OPN(n, name) ((n) ? name ## 1 : name ## 2)
-#define OP(name) OPN(selected, name)
+  #define OPN(n, name) ((n) ? name ## 1 : name ## 2)
+  #define OP(name) OPN(selected, name)
 
   command error_t Init.init() {
     request = IDLE;
@@ -150,25 +151,23 @@ implementation
   }
 
   void checkBuffer(uint8_t buf) {
-    if (flashBusy)
-      {
-	call HplAt45db.waitIdle();
-	return;
-      }
+    if (flashBusy) {
+      call HplAt45db.waitIdle();
+      return;
+    }
     call HplAt45db.compare(OPN(buf, AT45_C_COMPARE_BUFFER), buffer[buf].page);
     checking = buf;
   }
 
   void flushBuffer() {
-    if (flashBusy)
-      {
-	call HplAt45db.waitIdle();
-	return;
-      }
+    if (flashBusy) {
+      call HplAt45db.waitIdle();
+      return;
+    }
     call HplAt45db.flush(buffer[selected].erased ?
-			 OP(AT45_C_QFLUSH_BUFFER) :
-			 OP(AT45_C_FLUSH_BUFFER), 
-			 buffer[selected].page);
+             OP(AT45_C_QFLUSH_BUFFER) :
+             OP(AT45_C_FLUSH_BUFFER), 
+             buffer[selected].page);
   }
 
   event void HplAt45db.waitIdleDone() {
@@ -176,7 +175,7 @@ implementation
     // Eager compare - this steals the current command
 #if 0
     if ((buffer[0].unchecked || buffer[1].unchecked) &&
-	cmdPhase != P_COMPARE)
+    cmdPhase != P_COMPARE)
       checkBuffer(buffer[0].unchecked ? 0 : 1);
     else
 #endif
@@ -190,11 +189,10 @@ implementation
       buffer[checking].unchecked = 0;
     else if (buffer[checking].unchecked < 2)
       buffer[checking].clean = FALSE;
-    else
-      {
-	requestDone(FAIL, 0, BROKEN);
-	return;
-      }
+    else {
+      requestDone(FAIL, 0, BROKEN);
+      return;
+    }
     handleRWRequest();
   }
 
@@ -250,112 +248,114 @@ implementation
     requestDone(SUCCESS, 0, IDLE);
   }
 
+  event void HplAt45db.powerDownDone() {
+    signal SplitControl.stopDone(SUCCESS);
+  }
+
+  event void HplAt45db.wakeDone() {
+    signal SplitControl.startDone(SUCCESS);
+  }
+
   void syncOrFlushAll(uint8_t newReq);
 
   void handleRWRequest() {
     if (reqPage == buffer[selected].page)
-      switch (request)
-	{
-	case R_ERASE:
-	  switch (reqOffset)
-	    {
-	    case AT45_ERASE:
-	      if (flashBusy)
-		call HplAt45db.waitIdle();
-	      else
-		call HplAt45db.erase(AT45_C_ERASE_PAGE, reqPage);
-	      break;
-	    case AT45_PREVIOUSLY_ERASED:
-	      // We believe the user...
-	      buffer[selected].erased = TRUE;
-	      /* Fallthrough */
-	    case AT45_DONT_ERASE:
-	      // The buffer contains garbage, but we don't care about the state
-	      // of bits on this page anyway (if we do, we'll perform a 
-	      // subsequent write)
-	      buffer[selected].clean = TRUE;
-	      requestDone(SUCCESS, 0, IDLE);
-	      break;
-	    }
-	  break;
+      switch (request) {
+        case R_ERASE:
+          switch (reqOffset)
+            {
+            case AT45_ERASE:
+              if (flashBusy)
+            call HplAt45db.waitIdle();
+              else
+            call HplAt45db.erase(AT45_C_ERASE_PAGE, reqPage);
+              break;
+            case AT45_PREVIOUSLY_ERASED:
+              // We believe the user...
+              buffer[selected].erased = TRUE;
+              /* Fallthrough */
+            case AT45_DONT_ERASE:
+              // The buffer contains garbage, but we don't care about the state
+              // of bits on this page anyway (if we do, we'll perform a 
+              // subsequent write)
+              buffer[selected].clean = TRUE;
+              requestDone(SUCCESS, 0, IDLE);
+              break;
+            }
+          break;
 
-	case R_COPY:
-	  if (!buffer[selected].clean) // flush any modifications
-	    flushBuffer();
-	  else
-	    {
-	      // Just redesignate as destination page, and mark it dirty.
-	      // It will eventually be flushed, completing the copy.
-	      buffer[selected].page = reqOffset;
-	      buffer[selected].clean = FALSE;
-	      post taskSuccess();
-	    }
-	  break;
+        case R_COPY:
+          if (!buffer[selected].clean) // flush any modifications
+            flushBuffer();
+          else {
+              // Just redesignate as destination page, and mark it dirty.
+              // It will eventually be flushed, completing the copy.
+              buffer[selected].page = reqOffset;
+              buffer[selected].clean = FALSE;
+              post taskSuccess();
+          }
+          break;
 
-	case R_SYNC: case R_SYNCALL:
-	  if (buffer[selected].clean && buffer[selected].unchecked)
-	    {
-	      checkBuffer(selected);
-	      return;
-	    }
-	  /* fall through */
-	case R_FLUSH: case R_FLUSHALL:
-	  if (!buffer[selected].clean)
-	    flushBuffer();
-	  else if (request == R_FLUSH || request == R_SYNC)
-	    post taskSuccess();
-	  else
-	    {
-	      // Check for more dirty pages
-	      uint8_t oreq = request;
+        case R_SYNC: case R_SYNCALL:
+          if (buffer[selected].clean && buffer[selected].unchecked) {
+              checkBuffer(selected);
+              return;
+          }
+          /* fall through */
 
-	      request = IDLE;
-	      syncOrFlushAll(oreq);
-	    }
-	  break;
+        case R_FLUSH: case R_FLUSHALL:
+          if (!buffer[selected].clean)
+            flushBuffer();
+          else if (request == R_FLUSH || request == R_SYNC)
+            post taskSuccess();
+          else {
+              // Check for more dirty pages
+              uint8_t oreq = request;
+              request = IDLE;
+              syncOrFlushAll(oreq);
+          }
+          break;
 
-	case R_READ:
-	  if (buffer[selected].busy)
-	    call HplAt45db.waitIdle();
-	  else
-	    call HplAt45db.readBuffer(OP(AT45_C_READ_BUFFER), reqOffset,
-				      reqBuf, reqBytes);
-	  break;
+        case R_READ:
+          if (buffer[selected].busy)
+            call HplAt45db.waitIdle();
+          else
+            call HplAt45db.readBuffer(OP(AT45_C_READ_BUFFER), reqOffset,
+                          reqBuf, reqBytes);
+          break;
 
-	case R_READCRC:
-	  if (buffer[selected].busy)
-	    call HplAt45db.waitIdle();
-	  else
-	    /* Hack: baseCrc was stored in reqBuf */
-	    call HplAt45db.crc(OP(AT45_C_READ_BUFFER), 0, reqOffset, reqBytes,
-			       (uint16_t)reqBuf);
-	  break;
+        case R_READCRC:
+          if (buffer[selected].busy)
+            call HplAt45db.waitIdle();
+          else
+            /* Hack: baseCrc was stored in reqBuf */
+            call HplAt45db.crc(OP(AT45_C_READ_BUFFER), 0, reqOffset, reqBytes,
+                       (uint16_t)reqBuf);
+          break;
 
-	case R_WRITE:
-	  if (buffer[selected].busy)
-	    call HplAt45db.waitIdle();
-	  else
-	    call HplAt45db.write(OP(AT45_C_WRITE_BUFFER), 0, reqOffset,
-				 reqBuf, reqBytes);
-	  break;
-	}
+        case R_WRITE:
+          if (buffer[selected].busy)
+            call HplAt45db.waitIdle();
+          else
+            call HplAt45db.write(OP(AT45_C_WRITE_BUFFER), 0, reqOffset,
+                     reqBuf, reqBytes);
+          break;
+      }
     else if (!buffer[selected].clean)
       flushBuffer();
     else if (buffer[selected].unchecked)
       checkBuffer(selected);
-    else
-      {
-	// just get the new page (except for erase)
-	if (request == R_ERASE)
-	  {
-	    buffer[selected].page = reqPage;
-	    handleRWRequest();
-	  }
-	else if (flashBusy)
-	  call HplAt45db.waitIdle();
-	else
-	  call HplAt45db.fill(OP(AT45_C_FILL_BUFFER), reqPage);
+    else {
+    // just get the new page (except for erase)
+      if (request == R_ERASE) {
+        buffer[selected].page = reqPage;
+        handleRWRequest();
       }
+      else if (flashBusy)
+        call HplAt45db.waitIdle();
+      else
+        call HplAt45db.fill(OP(AT45_C_FILL_BUFFER), reqPage);
+    }
   }
 
   void requestDone(error_t result, uint16_t computedCrc, uint8_t newState) {
@@ -374,10 +374,13 @@ implementation
       }
   }
 
-  void newRequest(uint8_t req, at45page_t page, at45pageoffset_t offset,
-		  void * COUNT_NOK(n) reqdata, at45pageoffset_t n) {
+  void newRequest(uint8_t req, 
+                  at45page_t page, 
+                  at45pageoffset_t offset,
+                  void * COUNT_NOK(n) reqdata, 
+                  at45pageoffset_t n) {
+    
     request = req;
-
     reqBuf = NULL;
     reqBytes = n;
     reqBuf = reqdata;
@@ -391,34 +394,41 @@ implementation
     else
       selected = !selected; // LRU with 2 buffers...
 
-#ifdef CHECKARGS
-    if (page >= AT45_MAX_PAGES ||
-	n > AT45_PAGE_SIZE ||
-	(req != R_COPY && offset >= AT45_PAGE_SIZE) ||
-	(req != R_COPY && offset + n > AT45_PAGE_SIZE) ||
-	(req == R_COPY && offset >= AT45_MAX_PAGES)) {
-      post taskFail();
-    }
-    else
-#endif
-      handleRWRequest();
+    #ifdef CHECKARGS
+      if (page >= AT45_MAX_PAGES ||
+      n > AT45_PAGE_SIZE ||
+      (req != R_COPY && offset >= AT45_PAGE_SIZE) ||
+      (req != R_COPY && offset + n > AT45_PAGE_SIZE) ||
+      (req == R_COPY && offset >= AT45_MAX_PAGES)) {
+        post taskFail();
+      }
+      else
+    #endif
+        handleRWRequest();
   }
 
-  command void At45db.read(at45page_t page, at45pageoffset_t offset,
-				   void *reqdata, at45pageoffset_t n) {
+  command void At45db.read(at45page_t page, 
+                           at45pageoffset_t offset,
+                           void *reqdata, 
+                           at45pageoffset_t n) {
+    
     newRequest(R_READ, page, offset, reqdata, n);
   }
 
   command void At45db.computeCrc(at45page_t page,
-					at45pageoffset_t offset,
-					at45pageoffset_t n,
-					uint16_t baseCrc) {
+                                 at45pageoffset_t offset,
+                                 at45pageoffset_t n,
+                                 uint16_t baseCrc) {
+    
     /* This is a hack (store crc in reqBuf), but it saves 2 bytes of RAM */
     newRequest(R_READCRC, page, offset, TCAST(uint8_t * COUNT(n), baseCrc), n);
   }
 
-  command void At45db.write(at45page_t page, at45pageoffset_t offset,
-				    void *reqdata, at45pageoffset_t n) {
+  command void At45db.write(at45page_t page, 
+                            at45pageoffset_t offset,
+                            void *reqdata, 
+                            at45pageoffset_t n) {
+    
     newRequest(R_WRITE, page, offset, reqdata, n);
   }
 
@@ -439,11 +449,10 @@ implementation
       selected = 0;
     else if (buffer[1].page == page)
       selected = 1;
-    else
-      {
-	post taskSuccess();
-	return;
-      }
+    else {
+      post taskSuccess();
+      return;
+    }
 
     buffer[selected].unchecked = 0;
     handleRWRequest();
@@ -464,11 +473,10 @@ implementation
       selected = 0;
     else if (!buffer[1].clean)
       selected = 1;
-    else
-      {
-	post taskSuccess();
-	return;
-      }
+    else {
+      post taskSuccess();
+      return;
+    }
 
     buffer[selected].unchecked = 0;
     handleRWRequest();
@@ -480,5 +488,15 @@ implementation
 
   command void At45db.flushAll() {
     syncOrFlushAll(R_FLUSHALL);
+  }
+
+  command error_t SplitControl.start(){
+    call HplAt45db.wake();
+    return SUCCESS;
+  }
+  
+  command error_t SplitControl.stop(){
+    call HplAt45db.deepPowerDown();
+    return SUCCESS;
   }
 }
