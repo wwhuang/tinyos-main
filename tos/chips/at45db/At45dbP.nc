@@ -362,8 +362,7 @@ implementation {
     uint8_t orequest = request;
 
     request = newState;
-    switch (orequest)
-      {
+    switch (orequest) {
       case R_READ: signal At45db.readDone(result); break;
       case R_READCRC: signal At45db.computeCrcDone(result, computedCrc); break;
       case R_WRITE: signal At45db.writeDone(result); break;
@@ -371,7 +370,7 @@ implementation {
       case R_FLUSH: case R_FLUSHALL: signal At45db.flushDone(result); break;
       case R_ERASE: signal At45db.eraseDone(result); break;
       case R_COPY: signal At45db.copyPageDone(result); break;
-      }
+    }
   }
 
   void newRequest(uint8_t req, 
@@ -499,4 +498,7 @@ implementation {
     call HplAt45db.deepPowerDown();
     return SUCCESS;
   }
+
+  default event void SplitControl.startDone(error_t error) {};
+  default event void SplitControl.stopDone(error_t error) {};
 }

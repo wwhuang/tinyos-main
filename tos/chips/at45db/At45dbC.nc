@@ -26,6 +26,7 @@ configuration At45dbC
     interface Resource[uint8_t client];
     interface ResourceDefaultOwner;
     interface ArbiterInfo;
+    interface SplitControl; // Provides power control for the at45db
   }
 }
 implementation
@@ -34,6 +35,7 @@ implementation
   components new FcfsArbiterC(UQ_AT45DB) as Arbiter;
 
   At45db = At45dbP;
+  SplitControl = At45dbP.SplitControl;
   Resource = Arbiter;
   ResourceDefaultOwner = Arbiter;
   ArbiterInfo = Arbiter;

@@ -192,4 +192,5 @@ interface At45db {
    * @param crc CRC value (valid only if error == SUCCESS)
    */
   event void computeCrcDone(error_t error, uint16_t crc);
+
 }

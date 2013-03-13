@@ -184,13 +184,17 @@ interface HplAt45db {
    */
   event void writeDone();
 
+
+  command void deepPowerDown();
   /* 
    * Signaled when the at45db has been put into deep sleep
+   * 
   */
   event void powerDownDone();
 
+  command void wake();
   /* 
    * Signaled when the at45db has been woken up from deep sleep into stand by. 
   */
-  event void resumeDone();
+  event void wakeDone();
 }
