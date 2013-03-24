@@ -1,4 +1,4 @@
-// $Id: CachedIeeeEui64C.nc,v 1.1 2010/02/23 06:45:38 sdhsdh Exp $
+// $Id: PlatformIeeeEui64.h,v 1.1 2010/02/23 06:45:38 sdhsdh Exp $
 /*
  * Copyright (c) 2007, Vanderbilt University
  * All rights reserved.
@@ -20,21 +20,18 @@
  * PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
  *
  * Author: Janos Sallai
+ * <stevedh@eecs.berkeley.edu> changes for Epic
  */
 
-/**
- * Cache an EUI 64 at initialization time and return the cached value for
- * subsequent queries.
- */
-configuration CachedIeeeEui64C {
-  uses interface LocalIeeeEui64 as SubIeeeEui64;
-  provides interface LocalIeeeEui64;
-} implementation {
-  components CachedIeeeEui64P, MotePlatformC;
+#ifndef PLATFORMIEEEEUI64_H
+#define PLATFORMIEEEEUI64_H
 
-  MotePlatformC.SubInit -> CachedIeeeEui64P.Init;
+enum {
+  IEEE_EUI64_COMPANY_ID_0 = 0x00,
+  IEEE_EUI64_COMPANY_ID_1 = 0x12,
+  IEEE_EUI64_COMPANY_ID_2 = 0x6d,
+  IEEE_EUI64_SERIAL_ID_0 = 'E',
+  IEEE_EUI64_SERIAL_ID_1 = 'P',
+};
 
-  SubIeeeEui64 = CachedIeeeEui64P;
-  LocalIeeeEui64 = CachedIeeeEui64P;
-
-}
+#endif // PLATFORMIEEEEUI64_H
