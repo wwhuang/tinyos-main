@@ -42,6 +42,7 @@
 
 #ifndef HPLAT45DB_CHIP_H
 #define HPLAT45DB_CHIP_H
+#define AT45_POWER_CONTROL
 
 // flash characteristics
 enum {
