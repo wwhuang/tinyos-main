@@ -1,6 +1,7 @@
 /**
  * Dallas/Maxim 1wire bus master
- *
+ * WARNING: IF YOU ARE ON 
+ * 
  */
 
 configuration OneWireMasterC {
