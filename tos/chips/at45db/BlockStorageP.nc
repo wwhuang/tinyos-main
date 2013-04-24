@@ -111,7 +111,7 @@ implementation
 
 
   /* ------------------------------------------------------------------ */
-  /* Interface with ConfigStorageP (see also writeHook call below)	*/
+  /* Interface with ConfigStorageP (see also writeHook call below)  */
   /* ------------------------------------------------------------------ */
 
   at45page_t pageRemap(at45page_t p) {
@@ -137,7 +137,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Queue and initiate user requests					*/
+  /* Queue and initiate user requests         */
   /* ------------------------------------------------------------------ */
 
   void eraseStart();
@@ -145,17 +145,16 @@ implementation
   void multipageStart(uint16_t crc);
 
   void startRequest() {
-    switch (s[client].request)
-      {
+    switch (s[client].request) {
       case R_ERASE:
-	eraseStart();
-	break;
+        eraseStart();
+        break;
       case R_SYNC:
-	syncStart();
-	break;
+        syncStart();
+        break;
       default:
-	multipageStart((uint16_t)s[client].buf);
-      }
+        multipageStart((uint16_t)s[client].buf);
+    }
   }
 
   void endRequest(error_t result, uint16_t crc) {
@@ -166,28 +165,30 @@ implementation
     s[c].request = R_IDLE;
     call Resource.release[c]();
 
-    switch(tmpState)
-      {
+    switch(tmpState) {
       case R_READ:
-	signal BlockRead.readDone[c](s[c].addr, s[c].buf, currentOffset, result);
-	break;
+        signal BlockRead.readDone[c](s[c].addr, s[c].buf, currentOffset, result);
+        break;
       case R_WRITE:
-	signal BlockWrite.writeDone[c](s[c].addr, s[c].buf, currentOffset, result);
-	break;
+        signal BlockWrite.writeDone[c](s[c].addr, s[c].buf, currentOffset, result);
+        break;
       case R_ERASE:
-	signal BlockWrite.eraseDone[c](result);
-	break;
+        signal BlockWrite.eraseDone[c](result);
+        break;
       case R_CRC:
-	signal BlockRead.computeCrcDone[c](s[c].addr, currentOffset, crc, result);
-	break;
+        signal BlockRead.computeCrcDone[c](s[c].addr, currentOffset, crc, result);
+        break;
       case R_SYNC:
-	signal BlockWrite.syncDone[c](result);
-	break;
-      }
+        signal BlockWrite.syncDone[c](result);
+        break;
+    }
   }
 
-  error_t newRequest(uint8_t newState, uint8_t id,
-		       storage_addr_t addr, uint8_t* COUNT_NOK(len) buf, storage_len_t len) {
+  error_t newRequest(uint8_t newState, 
+                     uint8_t id,
+                     storage_addr_t addr, 
+                     uint8_t* COUNT_NOK(len) buf, 
+                     storage_len_t len) {
     storage_len_t vsize;
 
     if (s[id].request != R_IDLE)
@@ -215,14 +216,12 @@ implementation
   event void Resource.granted[uint8_t blockId]() {
     client = blockId;
 
-    if (s[blockId].request == R_WRITE &&
-	call BConfig.writeHook[blockId]())
-      {
-	/* Config write intercept. We'll get a writeContinue when it's
-	   time to resume. */
-	client = NO_CLIENT;
-	return;
-      }
+    if (s[blockId].request == R_WRITE && call BConfig.writeHook[blockId]()) {
+      /* Config write intercept. We'll get a writeContinue when it's
+         time to resume. */
+      client = NO_CLIENT;
+      return;
+    }
     startRequest();
   }
 
@@ -240,7 +239,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Multipage operations            					*/
+  /* Multipage operations                     */
   /* ------------------------------------------------------------------ */
 
   void multipageContinue(uint16_t crc) {
@@ -249,11 +248,10 @@ implementation
     at45pageoffset_t pageOffset, count;
     uint8_t *buf = s[client].buf;
 
-    if (remaining == 0)
-      {
-	endRequest(SUCCESS, crc);
-	return;
-      }
+    if (remaining == 0) {
+      endRequest(SUCCESS, crc);
+      return;
+    }
 
     addr = s[client].addr + currentOffset;
     page = pageRemap(addr >> AT45_PAGE_SIZE_LOG2);
@@ -262,18 +260,17 @@ implementation
     if (remaining < count)
       count = remaining;
 
-    switch (s[client].request)
-      {
+    switch (s[client].request) {
       case R_WRITE:
-	call At45db.write(page, pageOffset, buf + currentOffset, count);
-	break;
+        call At45db.write(page, pageOffset, buf + currentOffset, count);
+        break;
       case R_READ:
-	call At45db.read(page, pageOffset, buf + currentOffset, count);
-	break;
+        call At45db.read(page, pageOffset, buf + currentOffset, count);
+        break;
       case R_CRC:
-	call At45db.computeCrc(page, pageOffset, count, crc);
-	break;
-      }
+        call At45db.computeCrc(page, pageOffset, count, crc);
+        break;
+    }
     currentOffset += count;
   }
 
@@ -290,7 +287,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Erase								*/
+  /* Erase                */
   /* ------------------------------------------------------------------ */
 
   command error_t BlockWrite.erase[uint8_t id]() {
@@ -306,7 +303,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Write								*/
+  /* Write                */
   /* ------------------------------------------------------------------ */
 
   command error_t BlockWrite.write[uint8_t id](storage_addr_t addr, void* buf, storage_len_t len) {
@@ -314,7 +311,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Sync								*/
+  /* Sync               */
   /* ------------------------------------------------------------------ */
 
   command error_t BlockWrite.sync[uint8_t id]() {
@@ -330,7 +327,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Read								*/
+  /* Read               */
   /* ------------------------------------------------------------------ */
 
   command error_t BlockRead.read[uint8_t id](storage_addr_t addr, void* buf, storage_len_t len) {
@@ -338,7 +335,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Compute CRC							*/
+  /* Compute CRC              */
   /* ------------------------------------------------------------------ */
 
   command error_t BlockRead.computeCrc[uint8_t id](storage_addr_t addr, storage_len_t len, uint16_t basecrc) {
@@ -346,7 +343,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Get Size								*/
+  /* Get Size               */
   /* ------------------------------------------------------------------ */
 
   command storage_len_t BlockRead.getSize[uint8_t blockId]() {
@@ -361,7 +358,7 @@ implementation
   }
 
   /* ------------------------------------------------------------------ */
-  /* Dispatch HAL operations to current user op				*/
+  /* Dispatch HAL operations to current user op       */
   /* ------------------------------------------------------------------ */
 
   event void At45db.writeDone(error_t result) {
